@@ -1,2 +1,2 @@
 So far there are two working Codes of the project. The base work of both codes comes from @LaythDuval who started the code, calculations, and animations. "Project_03-12_1.jl" is notebook that has @ojmoney00 adding onto it (see history/timeline). These addons include, phase plots, kinetic and energy graphs, and adding on/fixing @LaythDuval starting code of simplifying the model and constraints.
-The second notebook is from @danny-kruzick, who added onto @LaythDuval 's original code.
+The second notebook, "Project_03-12_2.1.jl" is from @danny-kruzick, who added onto @LaythDuval 's original code.
