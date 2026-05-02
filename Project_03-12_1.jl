@@ -218,6 +218,27 @@ function cart_beam_dynamic_solver(state_derivative, state, parameters, time)
 
 end
 
+# ╔═╡ bc8f39e0-5a93-4219-b067-6886b0570e02
+md"""
+## Lagrangian
+
+The system dynamics are derived using the **Lagrangian** equations, defined as $L = T - V$, where $T$ is the total kinetic energy and $V$ is the potential energy.
+
+### 1. Kinetic Energy ($T$)
+The total kinetic energy includes the translation of the block ($m_1$) and both the translation and rotation of the bar ($m_2, I_2$):
+$T = \frac{1}{2}m_1(\dot{x}_1^2 + \dot{y}_1^2) + \frac{1}{2}m_2(\dot{x}_2^2 + \dot{y}_2^2) + \frac{1}{2}I_2\dot{\theta}_2^2$
+
+### 2. Potential Energy ($V$)
+The potential energy is stored in the spring (compressed/stretched by $x_1$) and the gravitational height of both masses:
+$V = \frac{1}{2}kx_1^2 + m_1gy_1 + m_2gy_2$
+
+### 3. Equations of Motion
+Applying the Euler-Lagrange equation:
+$\frac{d}{dt}\left(\frac{\partial L}{\partial \dot{q}_i}\right) - \frac{\partial L}{\partial q_i} = 0$
+
+This results in a system of second-order coupled differential equations which we solve by converting them into the state-space form used in the code.
+"""
+
 # ╔═╡ 170ef537-6aee-4870-8647-15d0606fc70e
 begin
 	
@@ -442,68 +463,70 @@ end
 
 # ╔═╡ d28836b6-574a-4378-86ee-bfcc4bdb1423
 begin
-	animation_1 = @animate for index in 1:5:length(time_elapsed)
-		#Defines cart geometry
- 		cart_x, cart_y = cart_vertices(
-            cart_position_x[index],
-            cart_position_y[index],
-            block_w,   # cart width (m)
-            block_h   # cart height (m)
-        )
-		#plots cart
-        plot(
-            cart_x,
-            cart_y,
-            seriestype = :shape,
-            color = :gray,
-        )
-		
+	# Using a step of 1 (instead of 5) to include every calculated data point
+	animation_1 = @animate for index in 1:1:length(time_elapsed)
+		# Defines cart geometry
+	 	cart_x, cart_y = cart_vertices(
+	        cart_position_x[index],
+	        cart_position_y[index],
+	        block_w,   # cart width (m)
+	        block_h    # cart height (m)
+	    )
+
+		# Plots cart
+	    plot(
+	        cart_x,
+	        cart_y,
+	        seriesotype = :shape,
+	        color = :gray,
+	    )
+			
 		# Compute x-locations of the three wheel centers under the block
 		wheel_center_x_positions = begin
-    		usable_width = block_w - 2wheel_r
-    		cart_center_x = cart_position_x[index]
-   		 	cart_center_x .+ [-usable_width/2, 0.0, usable_width/2]
-		end
-		#y-location of the wheels
-		wheel_center_y = cart_position_y[index] - block_h/2 - wheel_r
-		#circle definition
-		circle_angle = range(0, 2π, length = 40)
-		for wheel_center_x in wheel_center_x_positions
-    	plot!(
-        	wheel_center_x .+ wheel_r .* cos.(circle_angle),
-        	wheel_center_y .+ wheel_r .* sin.(circle_angle),
-        	seriestype = :shape,
-        	color = :lightgray,
-        	linewidth = 0.5,
-			opacity = 1
-		)
+	    	usable_width = block_w - 2wheel_r
+	    	cart_center_x = cart_position_x[index]
+	   	 	cart_center_x .+ [-usable_width/2, 0.0, usable_width/2]
 		end
 
-		#Plotting the floor
-		plot!([minimum(cart_position_x)-block_w/2,maximum(cart_position_x)+block_w/2], [floor, floor], color = :black, linewidth = 4, label = false)
-			
-		#Generating spring image
+		# y-location of the wheels
+		wheel_center_y = cart_position_y[index] - block_h/2 - wheel_r
+		# circle definition
+		circle_angle = range(0, 2π, length = 40)
+		for wheel_center_x in wheel_center_x_positions
+	    	plot!(
+	        	wheel_center_x .+ wheel_r .* cos.(circle_angle),
+	        	wheel_center_y .+ wheel_r .* sin.(circle_angle),
+	        	seriesotype = :shape,
+	        	color = :lightgray,
+	        	linewidth = 0.5,
+				opacity = 1
+			)
+		end
+
+		# Plotting the floor
+		plot!([minimum(cart_position_x)-block_w/2, maximum(cart_position_x)+block_w/2], [floor, floor], color = :black, linewidth = 4, label = false)
+				
+		# Generating spring image
 		spring_left_x  = x_wall
 		spring_right_x = cart_position_x[index] - block_w/2
 		spring_y       = cart_position_y[index]
 
-		
 		spring_x, spring_y_vals = spring_curve(
-    		spring_left_x,
-    		spring_right_x,
-    		spring_y;
-    		n = 10,
-    		amplitude = 0.02
+	    	spring_left_x,
+	    	spring_right_x,
+	    	spring_y;
+	    	n = 10,
+	    	amplitude = 0.02
+		)
+				
+		plot!(
+	    	spring_x,
+	    	spring_y_vals,
+	    	linewidth = 2,
+	    	color = :purple
 		)
 			
-		plot!(
-    		spring_x,
-    		spring_y_vals,
-    	linewidth = 2,
-    	color = :purple
-		)
-		
-		#plots the beam
+		# Plots the beam
 		plot!(
 	        [beam_hinge_x[index], beam_tip_x[index]],
 	        [beam_hinge_y[index], beam_tip_y[index]],
@@ -519,163 +542,328 @@ begin
 	        legend=false
 	    )
 
-		#plots the cart/beam hinge
+		# Plots the cart/beam hinge
 		scatter!(
-    		[beam_hinge_x[index]],
-    		[beam_hinge_y[index]],
-    		markersize = 8,
-    		color = :black,
-			opacity = 0.9
-		)
-		#plots the beam COM	
-		scatter!(
-    		[beam_com_x[index]],
-    		[beam_com_y[index]],
-    		markersize = 5,
-    		color = :red,
-			opacity = 0.9
-		)
-		
-		#plots the beam tip	
-		scatter!(
-    		[beam_tip_x[index]],
-    		[beam_tip_y[index]],
-    		markersize = 5,
-    		color = :lightgreen,
+	    	[beam_hinge_x[index]],
+	    	[beam_hinge_y[index]],
+	    	markersize = 8,
+	    	color = :black,
 			opacity = 0.9
 		)
 
-		#Plotting the wall
+		# Plots the beam COM	
+		scatter!(
+	    	[beam_com_x[index]],
+	    	[beam_com_y[index]],
+	    	markersize = 5,
+	    	color = :red,
+			opacity = 0.9
+		)
+			
+		# Plots the beam tip	
+		scatter!(
+	    	[beam_tip_x[index]],
+	    	[beam_tip_y[index]],
+	    	markersize = 5,
+	    	color = :lightgreen,
+			opacity = 0.9
+		)
+
+		# Plotting the wall
 		plot!([x_wall, x_wall], [y10-2*block_h, y10+2*block_h], color = :black, linewidth = 4, label = false)
-		
 	end
 end
 
 # ╔═╡ 99c3d2d8-0b96-44ff-92b0-af4e17b7f59d
-gif(animation_1, "cart_beam_animation.gif", fps=1200)
+gif(animation_1, "cart_beam_animation.gif", fps=30)
 
 # ╔═╡ 0db6940b-ca6b-4ecd-ba17-56cfd8350cd0
 begin
-	animation_2 = @animate for index in 1:5:length(time_elapsed)
-		#Defines cart geometry
- 		cart_x, cart_y = cart_vertices(
-            cart_position_x[index],
-            cart_position_y[index],
-            block_w,   # cart width (m)
-            block_h   # cart height (m)
-        )
-		#plots cart
-        plot(
-            cart_x,
-            cart_y,
-            seriestype = :shape,
-            color = :gray,
+	# Changed step from 5 to 1 to use every data point for smoothness
+	animation_2 = @animate for index in 1:1:length(time_elapsed)
+		# Defines cart geometry
+		cart_x, cart_y = cart_vertices(
+			cart_position_x[index],
+			cart_position_y[index],
+			block_w,   # cart width (m)
+			block_h    # cart height (m)
+		)
+
+		# Plots cart
+		plot(
+			cart_x,
+			cart_y,
+			seriestype = :shape,
+			color = :gray,
 			opacity = 0.2
-        )
+		)
 		
 		# Compute x-locations of the three wheel centers under the block
 		wheel_center_x_positions = begin
-    		usable_width = block_w - 2wheel_r
-    		cart_center_x = cart_position_x[index]
-   		 	cart_center_x .+ [-usable_width/2, 0.0, usable_width/2]
+			usable_width = block_w - 2wheel_r
+			cart_center_x = cart_position_x[index]
+			cart_center_x .+ [-usable_width/2, 0.0, usable_width/2]
 		end
-		#y-location of the wheels
+
+		# y-location of the wheels
 		wheel_center_y = cart_position_y[index] - block_h/2 - wheel_r
-		#circle definition
+		# circle definition
 		circle_angle = range(0, 2π, length = 40)
 		for wheel_center_x in wheel_center_x_positions
-    	plot!(
-        	wheel_center_x .+ wheel_r .* cos.(circle_angle),
-        	wheel_center_y .+ wheel_r .* sin.(circle_angle),
-        	seriestype = :shape,
-        	color = :lightgray,
-        	linewidth = 0.2,
-			opacity = 1
-		)
+			plot!(
+				wheel_center_x .+ wheel_r .* cos.(circle_angle),
+				wheel_center_y .+ wheel_r .* sin.(circle_angle),
+				seriestype = :shape,
+				color = :lightgray,
+				linewidth = 0.2,
+				opacity = 1.0
+			)
 		end
 
-		#Plotting the floor
-		plot!([minimum(cart_position_x)-block_w/2,maximum(cart_position_x)+block_w/2], [floor, floor], color = :black, linewidth = 4, opacity = 0.2,label = false)
+		# Plotting the floor
+		plot!([minimum(cart_position_x)-block_w/2, maximum(cart_position_x)+block_w/2], [floor, floor], color = :black, linewidth = 4, opacity = 0.2, label = false)
 
-				
-		#plots the beam
+		# Plots the beam
 		plot!(
-	        [beam_hinge_x[index], beam_tip_x[index]],
-	        [beam_hinge_y[index], beam_tip_y[index]],
-	        linewidth=7,
-	        color=:blue,
-	        label="Beam",
-	        xlims=(x_min, x_max),
-	        ylims=(y_min, y_max),
-	        xlabel="X Position (m)",
-	        ylabel="Y Position (m)",
-	        title="Beam Point Motions Over Cycle",
-	        aspect_ratio=:equal,
-	        legend=false,
+			[beam_hinge_x[index], beam_tip_x[index]],
+			[beam_hinge_y[index], beam_tip_y[index]],
+			linewidth=7,
+			color=:blue,
+			label="Beam",
+			xlims=(x_min, x_max),
+			ylims=(y_min, y_max),
+			xlabel="X Position (m)",
+			ylabel="Y Position (m)",
+			title="Beam Point Motions Over Cycle",
+			aspect_ratio=:equal,
+			legend=false,
 			opacity = 0.2
-	    )
+		)
 
-		#plots the cart/beam hinge
+		# Plots the cart/beam hinge
 		scatter!(
-    		[beam_hinge_x[index]],
-    		[beam_hinge_y[index]],
-    		markersize = 8,
-    		color = :black,
+			[beam_hinge_x[index]],
+			[beam_hinge_y[index]],
+			markersize = 8,
+			color = :black,
 			opacity = 0.9
 		)
-		#plots the beam COM	
+
+		# Plots the beam COM	
 		scatter!(
-    		[beam_com_x[index]],
-    		[beam_com_y[index]],
-    		markersize = 5,
-    		color = :red,
-			opacity = 1.2
+			[beam_com_x[index]],
+			[beam_com_y[index]],
+			markersize = 5,
+			color = :red,
+			opacity = 1.0
 		)
 		
-		#plots the beam tip	
+		# Plots the beam tip	
 		scatter!(
-    		[beam_tip_x[index]],
-    		[beam_tip_y[index]],
-    		markersize = 5,
-    		color = :lightgreen,
-			opacity = 1,2
+			[beam_tip_x[index]],
+			[beam_tip_y[index]],
+			markersize = 5,
+			color = :lightgreen,
+			opacity = 1.0
 		)
-		#Trails	
+
+		# Trails (Paths)
 		# Beam hinge trail
 		plot!(
-    		beam_hinge_x[1:index],
-    		beam_hinge_y[1:index],
-    		color = :black,
-    		linewidth = 1,
-    		alpha = 0.6, 
+			beam_hinge_x[1:index],
+			beam_hinge_y[1:index],
+			color = :black,
+			linewidth = 1,
+			alpha = 0.6, 
 			label = "Hinge Path"
 		)
+
 		# Beam center-of-mass trail
 		plot!(
-    		beam_com_x[1:index],
-    		beam_com_y[1:index],
-    		color = :red,
-    		linewidth = 1,
-    		alpha = 0.6, 
+			beam_com_x[1:index],
+			beam_com_y[1:index],
+			color = :red,
+			linewidth = 1,
+			alpha = 0.6, 
 			label = "Beam COM Path"
 		)
+
 		# Beam tip trail
 		plot!(
-    		beam_tip_x[1:index],
-    		beam_tip_y[1:index],
-    		color = :lightgreen,
-    		linewidth = 1,
-    		alpha = 0.6,
+			beam_tip_x[1:index],
+			beam_tip_y[1:index],
+			color = :lightgreen,
+			linewidth = 1,
+			alpha = 0.6,
 			label = "Beam Tip Path"
 		)
-		
 	end
 end
 
 # ╔═╡ 269861b9-2454-4c0a-97e0-0b90bdab6fa5
-gif(animation_2, "cart_beam_animation_with_trails.gif", fps=1200)
+gif(animation_2, "cart_beam_animation_with_trails.gif", fps=30)
 
-# ╔═╡ ec413f97-99c3-4e18-b08e-c98a27209d37
+# ╔═╡ 73d59c78-787c-4849-b476-a7ac795d16f2
+md"""## notes
+
+only a reduced dynamic model is implemented here
+
+the initial conditions really matter.
+
+may want to impose a condition on the block and wall so it cant go left. or on the spring so it has infinite force rightward when the compression is too high?
+
+the bar is way too heavy compared to  the block imo
+
+
+"""
+
+# ╔═╡ 455484b6-7775-4e08-b635-8ba249803ccf
+md"""## Kinetic and Potential Energy
+
+For this graph, we can see that the kinetic energy and potential energy are opposite to eachother during the simulation.
+
+The total energy line (dashed line) is flat throughout, showing that all energy is conserved. Meaning all the potential goes to kinetic and vice verse. No energy is lossed from this system.
+"""
+
+# ╔═╡ 24f0413e-775d-42a5-b715-3bca0e4d82de
+begin
+	function calculate_energies(sol)
+	    ke = Float64[]
+	    pe = Float64[]
+	    
+	    for i in 1:length(sol.t)
+	        q = sol[1:6, i]
+	        qdot = sol[7:12, i]
+	        
+	        x1, y1, θ1, x2, y2, θ2 = q
+	        vx1, vy1, ω1, vx2, vy2, ω2 = qdot
+	        
+	        # Kinetic Energy: Translation + Rotation
+	        T = 0.5*m1*(vx1^2 + vy1^2) + 0.5*I1*ω1^2 + 
+	            0.5*m2*(vx2^2 + vy2^2) + 0.5*I2*ω2^2
+	        
+	        # Potential Energy: Gravity + Spring
+	        V = m1*g*y1 + m2*g*y2 + 0.5*k*x1^2
+	        
+	        push!(ke, T)
+	        push!(pe, V)
+	    end
+	    return ke, pe
+	end
+end
+
+# ╔═╡ 4b82d23e-7cc7-4f8d-b490-a8ae131a1023
+begin
+	kinetic_energy, potential_energy = calculate_energies(solution)
+	total_energy = kinetic_energy .+ potential_energy
+end
+
+# ╔═╡ 04ecdc5b-e09f-4486-8734-90dae772841a
+begin
+	p_energy = plot(time_elapsed, kinetic_energy, 
+	    label="Kinetic Energy", 
+	    lw=2, 
+	    color=:red,
+	    size=(800, 500)) 
+	
+	plot!(p_energy, time_elapsed, potential_energy, 
+	    label="Potential Energy", 
+	    lw=2, 
+	    color=:blue)
+	
+	plot!(p_energy, time_elapsed, total_energy, 
+	    label="Total Energy", 
+	    lw=1.5, 
+	    color=:black, 
+	    linestyle=:dash)
+	
+	plot!(p_energy, 
+	    xlabel="Time (s)", 
+	    ylabel="Energy (J)", 
+	    title="System Energy Conservation",
+	    grid=true,
+	    legend=:topright) # Moves legend inside the box
+end
+
+# ╔═╡ 140f7ddc-40c3-4a53-9e90-e1d52eadc27f
+begin
+	# Extracting the 6th row (angle θ2) and 12th row (angular velocity ω2)
+	bar_angle = solution[6, :]
+	bar_velocity = solution[12, :]
+end
+
+# ╔═╡ f69a99fb-882b-4353-840d-bad6cd661a0c
+md"""
+### Phase Portrait
+This **Phase Portrait** represents the **Bar's Angle** ($θ$) vs. its **Angular Velocity** ($ω$). 
+
+*   **Cycles:** Each loop represents one full oscillation of the bar.
+*   **Stability:** Since the path stays within a consistent boundary, it confirms the system is stable and not flying apart.
+*   **Energy Flow:** The red marker shows the current "momentum" of the bar; as it moves toward the center (0,0), it is losing speed, and as it moves away, it is gaining kinetic energy.
+"""
+
+# ╔═╡ 6c0d1bb4-f799-4abd-bb74-7594bce10644
+begin
+	p_phase = plot(bar_angle, bar_velocity, 
+	    line_z = solution.t,           # Colors the line based on time
+	    color = :viridis,              # A nice gradient (purple=start, yellow=end)
+	    title = "Phase Portrait: Bar Dynamics",
+	    subtitle = "Color indicates progression of time",
+	    xlabel = "Angle θ (rad)", 
+	    ylabel = "Angular Velocity ω (rad/s)",
+	    lw = 1.5,
+	    size = (800, 800),
+	    colorbar = true,               # Shows the time scale on the side
+	    legend = false)
+end
+
+# ╔═╡ 1bf02976-67d1-477e-afad-f1293c920f01
+begin
+	# Pre-calculate limits to keep the "camera" still
+	x_lims = (minimum(bar_angle)*1.2, maximum(bar_angle)*1.2)
+	y_lims = (minimum(bar_velocity)*1.2, maximum(bar_velocity)*1.2)
+
+	anim_phase = @animate for index in 1:1:length(time_elapsed)
+		
+		# 1. Plot the full trajectory (the "tail")
+		# We use a solid color here to speed up rendering
+		plot(
+			bar_angle, 
+			bar_velocity,
+			color = :blue,
+			alpha = 0.2,
+			linewidth = 1,
+			label = false
+		)
+
+		# 2. Plot the current state marker (the red circle)
+		scatter!(
+			[bar_angle[index]], 
+			[bar_velocity[index]],
+			markersize = 10,
+			color = :red,
+			markerstrokecolor = :white,
+			# Formatting the plot area
+			title = "Phase Portrait: Bar Dynamics",
+			xlabel = "Angle θ (rad)",
+			ylabel = "Angular Velocity ω (rad/s)",
+			xlims = x_lims,
+			ylims = y_lims,
+			aspect_ratio = :auto,  # Changed from :equal to fill the frame
+			size = (800, 800),
+			grid = true,
+			legend = false
+		)
+	end
+end
+
+# ╔═╡ 9ca69209-ea60-4470-abbb-d70c26e44f69
+begin
+	# Display the animation in the Pluto notebook
+	gif(anim_phase, fps = 30)
+end
+
+# ╔═╡ 6d5b39a9-3480-4b55-9425-38e127451ef4
 md"""## Simple first version
 
 defined constraints remove four coordinates so the first version MBD model uses only
@@ -721,31 +909,22 @@ $h(z,\dot{z}) =
 \end{bmatrix}$
 """
 
-# ╔═╡ 393fa2bb-6c09-4ed5-bc86-2db443d76081
+# ╔═╡ d3cbc146-2e4d-454c-811c-546766c956c9
 md"""
 Note that A hanging bar corresponds to
 $\theta = -\pi/2$
 """
 
-# ╔═╡ e37b0cbb-33bd-4696-9ac8-4679e3188d6c
-# ╠═╡ disabled = true
-#=╠═╡
+# ╔═╡ 79afa033-368b-494f-893f-f962b7ef63a7
 begin
-    function q_from_reduced(z)
+    # 1. Coordinate Mapping (State vector z -> Full 6-DOF coordinates)
+    function q_from_red(z)
         x, θ = z
-
-        x1 = x
-        y1 = 0.0
-        θ1 = 0.0
-
-        x2 = x + (L/2) * cos(θ)
-        y2 = (L/2) * sin(θ)
-        θ2 = θ
-
-        return [x1, y1, θ1, x2, y2, θ2]
+        return [x, 0.0, 0.0, x + (L/2) * cos(θ), (L/2) * sin(θ), θ]
     end
 
-    function kinematics(z)
+    # 2. Reduced Kinematics (Pivot, COM, and Tip)
+    function kinematics_red(z)
         x, θ = z
         pivot = [x, 0.0]
         com   = [x + (L/2) * cos(θ), (L/2) * sin(θ)]
@@ -753,177 +932,148 @@ begin
         return pivot, com, tip
     end
 
-    function mass_matrix(z)
+    # 3. Mass Matrix M(z) - Includes Coupling Terms
+    function mass_matrix_red(z)
         x, θ = z
         return [
-            m1 + m2              -(m2 * L / 2) * sin(θ)
+            m1 + m2                -(m2 * L / 2) * sin(θ)
             -(m2 * L / 2) * sin(θ)   m2 * L^2 / 3
         ]
     end
 
-    function forcing(z, zdot)
+    # 4. Forcing Term h(z, zdot) - Spring, Gravity, and Centrifugal
+    function forcing_red(z, zdot)
         x, θ = z
         xdot, θdot = zdot
-
         return [
             (m2 * L / 2) * cos(θ) * θdot^2 - k * x
             -(m2 * g * L / 2) * cos(θ)
         ]
     end
 
-    function state_rhs(u)
+    # 5. State-Space RHS: z_ddot = M \ h
+    function state_rhs_red(u)
         x, θ, xdot, θdot = u
-        z = [x, θ]
-        zdot = [xdot, θdot]
-
-        zddot = mass_matrix(z) \ forcing(z, zdot)
-
-        return [
-            xdot
-            θdot
-            zddot[1]
-            zddot[2]
-        ]
+        z, zdot = [x, θ], [xdot, θdot]
+        zddot = mass_matrix_red(z) \ forcing_red(z, zdot)
+        return [xdot, θdot, zddot[1], zddot[2]]
     end
 
-    function rk4_step(u, dt)
-        k1 = state_rhs(u)
-        k2 = state_rhs(u .+ 0.5 * dt .* k1)
-        k3 = state_rhs(u .+ 0.5 * dt .* k2)
-        k4 = state_rhs(u .+ dt .* k3)
-
+    # 6. RK4 Integration Stepper
+    function rk4_step_red(u, dt)
+        k1 = state_rhs_red(u)
+        k2 = state_rhs_red(u .+ 0.5 * dt .* k1)
+        k3 = state_rhs_red(u .+ 0.5 * dt .* k2)
+        k4 = state_rhs_red(u .+ dt .* k3)
         return u .+ (dt / 6.0) .* (k1 .+ 2k2 .+ 2k3 .+ k4)
     end
+end
 
-    function spring_curve(xL, xR, y; n = 8, amp = 0.015)
+# ╔═╡ 4a205d3b-d87c-44fe-92a3-db55df660fc3
+begin
+    # Time settings
+    dt_red = 0.01
+    t_end_red = 8.0
+    t_span_red = collect(0:dt_red:t_end_red)
+
+    # Initial Condition: [x, θ, x_dot, θ_dot]
+    u0_red = [0.08, pi/4, 0.0, 0.0]
+
+    # Pre-allocate history matrix
+    u_hist_red = zeros(length(t_span_red), 4)
+    u_hist_red[1, :] = u0_red
+
+    # Solve loop
+    for i in 1:length(t_span_red)-1
+        u_hist_red[i+1, :] = rk4_step_red(u_hist_red[i, :], dt_red)
+    end
+end
+
+# ╔═╡ 0a235274-ba87-4e1a-85a0-2e99f4f3bd4b
+begin
+    # Zigzag spring logic
+    function spring_curve_red(xL, xR, y; n = 10, amp = 0.02)
         xs = collect(range(xL, xR, length = 2n + 2))
         ys = fill(y, length(xs))
-
         for i in 2:length(xs)-1
             ys[i] += isodd(i) ? amp : -amp
         end
-
         return xs, ys
     end
-	# makes block for the animation
-    function block_shape(center; w = block_w, h = block_h)
+
+    # Block vertices logic
+    function block_shape_red(center; w = block_w, h = block_h)
         x, y = center
         xs = [x - w/2, x + w/2, x + w/2, x - w/2]
         ys = [y - h/2, y - h/2, y + h/2, y + h/2]
         return Shape(xs, ys)
     end
 end
-  ╠═╡ =#
 
-# ╔═╡ 454342cf-e36c-4b64-88db-9989addc969d
-md"""## Initial conditions
-
-the block is slightly displaced from equilibrium and the bar is above the block with all zero initial velocities
-"""
-
-# ╔═╡ 1d35ee92-3480-4e48-aab2-9dbfb52bc3be
-# ╠═╡ disabled = true
-#=╠═╡
+# ╔═╡ c3434f72-2c1e-4904-b122-0aa09291e24a
 begin
-    dt = 0.01
-    t_end = 8.0
-    t_span = collect(0:dt:t_end)
+    anim_reduced = @animate for index in 1:1:length(t_span_red)
+        
+        # 1. Current State from Reduced History
+        # We only use u_hist_red to avoid BoundsErrors with old variables
+        x_c, θ_c = u_hist_red[index, 1], u_hist_red[index, 2]
+        pivot_r, com_r, tip_r = kinematics_red([x_c, θ_c])
 
-    u0 = [
-        0.08
-        pi  # massively important initial condition btw
-        0.0
-        0.0
-    ]
+        # Initialize Plot
+        plot(
+            aspect_ratio = :equal,
+            xlims = (x_min, x_max),
+            ylims = (y_min, y_max),
+            xlabel = "X (m)", ylabel = "Y (m)",
+            title = "Reduced Model Simulation (θ₀ = π/4)",
+            legend = false
+        )
 
-    u_hist = zeros(length(t_span), 4)
-    u_hist[1, :] = u0
+        # 2. Draw Floor and Wall
+        plot!([x_wall, 0.5], [-block_h/2 - 2wheel_r, -block_h/2 - 2wheel_r], color=:black, lw=2)
+        plot!([x_wall, x_wall], [-0.1, 0.1], color=:black, lw=4)
 
-    for i in 1:length(t_span)-1
-        u_hist[i+1, :] = rk4_step(vec(u_hist[i, :]), dt)
+        # 3. Draw Spring and Cart
+        s_x, s_y = spring_curve_red(x_wall, x_c - block_w/2, 0.0)
+        plot!(s_x, s_y, color=:purple, lw=2)
+        plot!(block_shape_red([x_c, 0.0]), color=:gray, opacity=0.3)
+
+        # 4. Draw Wheels (Fixed: using x_c instead of cart_position_x)
+        wheel_center_x_positions = begin
+            usable_width = block_w - 2wheel_r
+            # Use the current x_c from the reduced model
+            x_c .+ [-usable_width/2, 0.0, usable_width/2]
+        end
+
+        # Use 0.0 for y because the reduced model center is at y=0
+        wheel_center_y = 0.0 - block_h/2 - wheel_r
+        circle_angle = range(0, 2π, length = 40)
+        
+        for wheel_center_x in wheel_center_x_positions
+            plot!(
+                wheel_center_x .+ wheel_r .* cos.(circle_angle),
+                wheel_center_y .+ wheel_r .* sin.(circle_angle),
+                seriestype = :shape, # Fixed typo from seriesotype
+                color = :lightgray,
+                linewidth = 0.5,
+                opacity = 1
+            )
+        end
+
+        # 5. Draw Beam
+        plot!([pivot_r[1], tip_r[1]], [pivot_r[2], tip_r[2]], color=:blue, lw=6)
+
+        # 6. Draw Markers
+        scatter!([pivot_r[1]], [pivot_r[2]], color=:black, markersize=6)
+        scatter!([com_r[1]], [com_r[2]], color=:red, markersize=4)
+        scatter!([tip_r[1]], [tip_r[2]], color=:green, markersize=4)
     end
 end
-  ╠═╡ =#
 
-# ╔═╡ 5758440f-6bb5-46e4-a6d0-585357f1292e
-# ╠═╡ disabled = true
-#=╠═╡
+# ╔═╡ 7559ddee-2cf3-4a56-bace-43c8f79229b5
 begin
-    z0 = u_hist[1, 1:2]
-    q0 = q_from_reduced(z0)
-    (
-        q0 = q0,
-        Cq0 = C(q0)
-    )
+	gif(anim_reduced, fps = 30)
 end
-  ╠═╡ =#
-
-# ╔═╡ e8b08200-b71c-4965-bdf5-7ef3304c0e20
-# ╠═╡ disabled = true
-#=╠═╡
-anim = @animate for i in 1:length(t_span)
-    x = u_hist[i, 1]
-    θ = u_hist[i, 2]
-
-    pivot, com, tip = kinematics([x, θ])
-
-    com_x = [u_hist[j, 1] + (L/2) * cos(u_hist[j, 2]) for j in 1:i]
-    com_y = [(L/2) * sin(u_hist[j, 2]) for j in 1:i]
-
-    spring_x, spring_y = spring_curve(x_wall, x - block_w/2, 0.0)
-
-    plot(
-        aspect_ratio = :equal,
-        legend = :topright,
-        grid = true,
-        dpi = 300,
-        xlims = (-0.5, 0.5),
-        ylims = (-0.45, 0.45),
-        title = "sliding block + pendulum\n t = $(round(t_span[i], digits=2)) s"
-    )
-
-    # wall and track
-    plot!([x_wall, x_wall], [-0.06, 0.06], color = :black, linewidth = 4, label = false)
-    plot!([-0.35, 0.35], [0.0, 0.0], color = :dimgray, linewidth = 6, alpha = 0.35, label = "Track")
-
-    # spring
-    plot!(spring_x, spring_y, color = :slateblue, linewidth = 2, label = false)
-
-    # block
-    plot!(block_shape([x, 0.0]), color = :cornflowerblue, alpha = 0.85, label = "Block")
-
-    # bar
-    plot!([pivot[1], tip[1]], [pivot[2], tip[2]], color = :black, linewidth = 4, label = "Rigid bar")
-
-    # COM trace
-    plot!(com_x, com_y, color = :seagreen, linewidth = 2, alpha = 0.5, label = "Bar COM path")
-
-    # key points
-    scatter!([pivot[1]], [pivot[2]], color = :black, markersize = 5, label = false)
-    scatter!([com[1]], [com[2]], color = :mediumseagreen, markersize = 5, label = false)
-    scatter!([tip[1]], [tip[2]], color = :salmon, markersize = 5, label = false)
-end
-  ╠═╡ =#
-
-# ╔═╡ 727c9de2-08a1-4bb1-b34a-134137d8b255
-# ╠═╡ disabled = true
-#=╠═╡
-gif(anim, "project_03_disaster.gif", fps = 20)
-  ╠═╡ =#
-
-# ╔═╡ 73d59c78-787c-4849-b476-a7ac795d16f2
-md"""## notes
-
-only a reduced dynamic model is implemented here
-
-the initial conditions really matter.
-
-may want to impose a condition on the block and wall so it cant go left. or on the spring so it has infinite force rightward when the compression is too high?
-
-the bar is way too heavy compared to  the block imo
-
-
-"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -946,7 +1096,7 @@ Symbolics = "~7.15.3"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
 project_hash = "c7cf47653225e8349c8af4cbeb0d45a0bf88abc7"
 
@@ -3860,6 +4010,7 @@ version = "1.13.0+0"
 # ╠═2c4cad44-3fac-4776-97b6-6ac0627386f6
 # ╠═5a8753bf-0122-454c-b01f-2940ba4cbc27
 # ╠═f61be382-b6f8-45b9-aa1e-d113f10fb57a
+# ╟─bc8f39e0-5a93-4219-b067-6886b0570e02
 # ╠═170ef537-6aee-4870-8647-15d0606fc70e
 # ╠═43292139-538b-44d4-a37f-ca5406e89b45
 # ╠═85c7d376-91db-4458-902d-ba6af89a4752
@@ -3882,14 +4033,22 @@ version = "1.13.0+0"
 # ╠═99c3d2d8-0b96-44ff-92b0-af4e17b7f59d
 # ╠═0db6940b-ca6b-4ecd-ba17-56cfd8350cd0
 # ╠═269861b9-2454-4c0a-97e0-0b90bdab6fa5
-# ╟─ec413f97-99c3-4e18-b08e-c98a27209d37
-# ╟─393fa2bb-6c09-4ed5-bc86-2db443d76081
-# ╠═e37b0cbb-33bd-4696-9ac8-4679e3188d6c
-# ╟─454342cf-e36c-4b64-88db-9989addc969d
-# ╠═1d35ee92-3480-4e48-aab2-9dbfb52bc3be
-# ╠═5758440f-6bb5-46e4-a6d0-585357f1292e
-# ╠═e8b08200-b71c-4965-bdf5-7ef3304c0e20
-# ╠═727c9de2-08a1-4bb1-b34a-134137d8b255
-# ╠═73d59c78-787c-4849-b476-a7ac795d16f2
+# ╟─73d59c78-787c-4849-b476-a7ac795d16f2
+# ╟─455484b6-7775-4e08-b635-8ba249803ccf
+# ╠═24f0413e-775d-42a5-b715-3bca0e4d82de
+# ╠═4b82d23e-7cc7-4f8d-b490-a8ae131a1023
+# ╠═04ecdc5b-e09f-4486-8734-90dae772841a
+# ╠═140f7ddc-40c3-4a53-9e90-e1d52eadc27f
+# ╟─f69a99fb-882b-4353-840d-bad6cd661a0c
+# ╠═6c0d1bb4-f799-4abd-bb74-7594bce10644
+# ╠═1bf02976-67d1-477e-afad-f1293c920f01
+# ╠═9ca69209-ea60-4470-abbb-d70c26e44f69
+# ╟─6d5b39a9-3480-4b55-9425-38e127451ef4
+# ╟─d3cbc146-2e4d-454c-811c-546766c956c9
+# ╠═79afa033-368b-494f-893f-f962b7ef63a7
+# ╠═4a205d3b-d87c-44fe-92a3-db55df660fc3
+# ╠═0a235274-ba87-4e1a-85a0-2e99f4f3bd4b
+# ╠═c3434f72-2c1e-4904-b122-0aa09291e24a
+# ╠═7559ddee-2cf3-4a56-bace-43c8f79229b5
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
